@@ -10,5 +10,6 @@ urlpatterns = [
     path('study', views.EnterArticle),
     path('Step1/', views.step1),
     path('Step2/', views.step2),
+    path('Step4/', views.step4),
     path('MyPage/', views.Mypage),
 ]

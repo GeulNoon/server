@@ -19,20 +19,25 @@ import random
 import json
 from collections import OrderedDict
 from django.utils import timezone
-
+from sentence_transformers import SentenceTransformer, util
 from .models import User, ArticleQuiz, Study
 from .serializers import UserSerializer, ArticleQuizSerializer, StudySerializer
+from .article_comprehension import compute
+import networkx
+import re
 
 class ListPost(generics.ListCreateAPIView):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = ArticleQuizSerializer
 
 class DetailPost(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = ArticleQuizSerializer
 
 model = BartForConditionalGeneration.from_pretrained('./kobart_summary')
 tokenizer = PreTrainedTokenizerFast.from_pretrained('gogamza/kobart-base-v1')
+
+
 
 # quiz content fake data
 data1 = {
@@ -165,7 +170,7 @@ def EnterArticle(request) :
             quiz4_content = data1,
             quiz1_answer = 0,
             quiz2_answer = 0,
-            quiz3_answer = 0,
+            quiz3_answer = 0, 
             quiz4_answer = 0,
             email_id = request.data['email'],
         )
@@ -190,8 +195,7 @@ def EnterArticle(request) :
             email = request.data['email'],
             article_id = id,
         )
-
-        return JsonResponse(request.data)
+        return JsonResponse(request.data, safe=False)
     return JsonResponse(status=401, safe=False)
 
 # 학습하기 1단계 (학습하는 지문의 제목과 원문을 보냄)
@@ -213,7 +217,7 @@ def step1(request):
             return JsonResponse(status=401, safe=False)
 
 # 학습하기 2단계 (학습하는 지문의 제목과 요약문(json 형태)을 보냄)
-@api_view(['POST','GET'])
+@api_view(['PUT','GET'])
 def step2(request):
     if request.method == 'GET':
         if ArticleQuiz.objects.filter(article_id=id_now[0]).exists():
@@ -226,9 +230,48 @@ def step2(request):
             'summary': jsonObject['content'],
         }
         return JsonResponse(data)
-    else :
-            return JsonResponse(status=401, safe=False)
 
+    if request.method == 'PUT':
+        if isinstance(request.data['user_summary'], list) :
+            summary = " ".join(request.data['user_summary'])
+        else:
+            summary = request.data['user_summary']
+        if Study.objects.filter(study_id = s_id_now[0]).exists():
+            study = Study.objects.get(study_id = s_id_now[0])
+            study.user_summary = summary
+            study.save()
+            return JsonResponse(request.data, safe=False)
+    else :
+        return JsonResponse(status=401, safe=False)
+
+@api_view(['GET'])
+def step4(request):
+    if request.method == 'GET':
+        if Study.objects.filter(study_id = s_id_now[0]).exists():
+            study = Study.objects.get(study_id = s_id_now[0])
+            article = ArticleQuiz.objects.get(article_id=id_now[0])
+            title = article.article_title
+            text = article.article_content
+            answer = article.article_summary
+            summary = json.loads(article.article_summary)
+            answer = summary['answer']
+            user_summary = study.user_summary
+            article_comprehension = compute(text, user_summary, answer)
+            study.article_comprehension = article_comprehension
+            study.save()
+            data ={
+            'title' : title,
+            'article_comprehension' : article_comprehension,
+            'summary': answer
+        }
+        return JsonResponse(data)
+
+    else :
+        return JsonResponse(status=401, safe=False)
+
+    
+    
+        
 """@api_view(['POST','GET'])
 def step3(request):""" # 어휘 문제와 관련된 DB와의 작업이 여기에 들어갈 것 같아요 
 

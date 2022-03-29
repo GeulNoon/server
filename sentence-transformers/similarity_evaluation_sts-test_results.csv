@@ -1,0 +1,2 @@
+epoch,steps,cosine_pearson,cosine_spearman,euclidean_pearson,euclidean_spearman,manhattan_pearson,manhattan_spearman,dot_pearson,dot_spearman
+-1,-1,0.7722032792475806,0.7643110603910362,0.7685500818698319,0.7686381200597092,0.7683278683899706,0.7684704366843985,0.7388616358453357,0.7293124646246776

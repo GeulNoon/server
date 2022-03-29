@@ -24,8 +24,8 @@ class ArticleQuiz(models.Model):
     quiz1_answer = models.CharField(max_length=30)
     quiz2_answer = models.CharField(max_length=30)
     quiz3_answer = models.CharField(max_length=30)
-    quiz4_answer = models.CharField(max_length=200)
-    email = models.ForeignKey('User', default="general", on_delete=models.CASCADE)
+    quiz4_answer = models.CharField(max_length=30)
+    email = models.ForeignKey('User', models.DO_NOTHING, db_column='email')
 
     class Meta:
         managed = False
@@ -33,10 +33,10 @@ class ArticleQuiz(models.Model):
 
 class Study(models.Model):
     study_id = models.IntegerField(primary_key=True)
-    study_date = models.DateTimeField(auto_now_add=True)
+    study_date = models.DateTimeField()
     study_type = models.IntegerField()
-    user_summary = models.CharField(max_length=5000, blank=True, null=True)
-    quiz_count = models.CharField(max_length=3)
+    user_summary = models.CharField(max_length=2000, blank=True, null=True)
+    quiz_count = models.IntegerField()
     quiz1_user_answer = models.CharField(max_length=30, blank=True, null=True)
     quiz2_user_answer = models.CharField(max_length=30, blank=True, null=True)
     quiz3_user_answer = models.CharField(max_length=30, blank=True, null=True)
