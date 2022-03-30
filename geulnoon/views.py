@@ -19,12 +19,15 @@ import random
 import json
 from collections import OrderedDict
 from django.utils import timezone
-from sentence_transformers import SentenceTransformer, util
+import requests
+from bs4 import BeautifulSoup
+import urllib3
 from .models import User, ArticleQuiz, Study
 from .serializers import UserSerializer, ArticleQuizSerializer, StudySerializer
 from .article_comprehension import compute
-import networkx
-import re
+from django.db.models import Avg
+from datetime import datetime
+
 
 class ListPost(generics.ListCreateAPIView):
     queryset = User.objects.all()
@@ -286,6 +289,144 @@ def Mypage(request):
         data ={
             'nickname': nickname,
             'birthyear': birthyear
+        }
+        return JsonResponse(data)
+    else :
+            return JsonResponse(status=401, safe=False)
+
+# 단어 검색
+@api_view(['POST','GET'])
+def searchWord(request):
+    if request.method == 'POST':
+        url = "https://krdict.korean.go.kr/api/search?"
+        serviceKey = "certkey_no=3341&key=A715599AC7951FC091E0810CAA1EC810"
+        typeOfSearch="&type_search=search"
+        part = "&part=word"
+        word = request.data["word"]
+        sort = "&sort=popular"
+
+        def parse():
+            try:
+                TGT = item.find("target_code").get_text()
+                WORD = item.find("word").get_text()
+                DEF = item.find("definition").get_text()
+                return {
+                    "코드":TGT,
+                    "단어":WORD,
+                    "뜻":DEF,
+                    }
+            
+            except AttributeError as e:
+                return {
+                    "코드":None,
+                    "단어":None,
+                    "뜻":None,
+                }
+        #parsing 하기
+        result = requests.get(url+serviceKey+typeOfSearch+part+"&q="+word+sort, verify=False)
+        soup = BeautifulSoup(result.text,'lxml-xml')
+        items = soup.find_all("item")
+        row = []
+        for item in items:
+            WORD = item.find("word").get_text()
+            if WORD == word:
+                definition = parse()
+                row.append(definition['뜻'])
+        data ={
+            'definition': row,
+        }
+        return JsonResponse(data)
+    else :
+            return JsonResponse(status=401, safe=False)
+        
+#질의응답
+@api_view(['POST','GET'])
+def getAnswer(request):
+    if request.method == 'POST':
+        content=''
+        if ArticleQuiz.objects.filter(article_id=id_now[0]).exists():
+            article = ArticleQuiz.objects.get(article_id=id_now[0])
+            content  = article.article_content
+        openApiURL = "http://aiopen.etri.re.kr:8000/MRCServlet"
+        accessKey = "ed2296ff-a698-42e2-b72a-49fca2265500"
+        question = request.data["question"]
+        passage = content
+        
+        requestJson = {
+        "access_key": accessKey,
+            "argument": {
+                "question": question,
+                "passage": passage
+            }
+        }
+        
+        http = urllib3.PoolManager()
+        response = http.request(
+            "POST",
+            openApiURL,
+            headers={"Content-Type": "application/json; charset=UTF-8"},
+            body=json.dumps(requestJson)
+        )
+        datas = json.loads(response.data)
+        data ={
+            'answer': datas['return_object']['MRCInfo']['answer'],
+        }
+        return JsonResponse(data)
+    else :
+            return JsonResponse(status=401, safe=False)
+
+# 학습기록 요약버전
+@api_view(['POST','GET'])
+def GetHistory(request):
+    if request.method == 'GET':
+        titlelist = []
+        if User.objects.filter(email = request.query_params['email']).exists():
+            user = User.objects.get(email = request.query_params['email'])
+            if Study.objects.filter(email = user.email).exists():
+                study = Study.objects.filter(email = user.email)
+                total_study = len(study)
+                avg_article_comprehension =  study.aggregate(Avg('article_comprehension'))['article_comprehension__avg']
+                print(avg_article_comprehension)
+
+                for i,s in reversed(list(enumerate(study))):
+                    date = s.study_date.strftime("%Y-%m-%d %H:%M:%S")
+                    id = s.article_id
+                    if ArticleQuiz.objects.filter(article_id = id).exists():
+                        article = ArticleQuiz.objects.get(article_id = id)
+                        title = article.article_title
+                    titlelist.append([title,date])
+                    if i ==2: break
+            
+        data ={
+            'title': titlelist,
+            'total_study': total_study,
+            'avg_article_comprehension': avg_article_comprehension,
+        }
+        return JsonResponse(data)
+    else :
+            return JsonResponse(status=401, safe=False)
+        
+# 학습기록 더보기
+@api_view(['POST','GET'])
+def GetMoreHistory(request):
+    if request.method == 'GET':
+        titlelist = []
+        if User.objects.filter(email = request.query_params['email']).exists():
+            user = User.objects.get(email = request.query_params['email'])
+            if Study.objects.filter(email = user.email).exists():
+                study = Study.objects.filter(email = user.email)
+                for s in reversed(list(study)):
+                    date = s.study_date.strftime("%Y-%m-%d %H:%M:%S")
+                    step2_score = s.article_comprehension
+                    step3_score = s.quiz_score
+                    id = s.article_id
+                    if ArticleQuiz.objects.filter(article_id = id).exists():
+                        article = ArticleQuiz.objects.get(article_id = id)
+                        title = article.article_title
+                    titlelist.append([title,date,step2_score,step3_score])
+            
+        data ={
+            'title': titlelist,
         }
         return JsonResponse(data)
     else :

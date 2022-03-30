@@ -12,4 +12,8 @@ urlpatterns = [
     path('Step2/', views.step2),
     path('Step4/', views.step4),
     path('MyPage/', views.Mypage),
+    path('searchWord/', views.searchWord),
+    path('getAnswer/', views.getAnswer),
+    path('getHistory/', views.GetHistory),
+    path('getMoreHistory/', views.GetMoreHistory),
 ]
