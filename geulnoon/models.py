@@ -47,6 +47,7 @@ class Study(models.Model):
     quiz4_user_answer_correct = models.IntegerField()
     article_comprehension = models.FloatField()
     quiz_score = models.IntegerField()
+    issubmitted = models.BooleanField(default = False)
     email = models.CharField(max_length=45)
     article_id = models.IntegerField()
 

@@ -8,6 +8,7 @@ urlpatterns = [
     path('signup', views.SignUp),
     path('login', views.LogIn),
     path('study', views.EnterArticle),
+    path('title/', views.title),
     path('Step1/', views.step1),
     path('Step2/', views.step2),
     path('Step4/', views.step4),

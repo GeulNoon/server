@@ -28,19 +28,16 @@ from .article_comprehension import compute
 from django.db.models import Avg
 from datetime import datetime
 
-
 class ListPost(generics.ListCreateAPIView):
     queryset = User.objects.all()
-    serializer_class = ArticleQuizSerializer
+    serializer_class = UserSerializer
 
 class DetailPost(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
-    serializer_class = ArticleQuizSerializer
+    serializer_class = UserSerializer
 
 model = BartForConditionalGeneration.from_pretrained('./kobart_summary')
 tokenizer = PreTrainedTokenizerFast.from_pretrained('gogamza/kobart-base-v1')
-
-
 
 # quiz content fake data
 data1 = {
@@ -95,6 +92,8 @@ def models(article) :
     
     return jsonfile
 
+id_now = [] # 현재 학습하는 지문 id (임시)
+s_id_now = [] # 현재 학습하는 학습 id (임시)
 
 # jWT 현재 사용 X
 """def get_user_email(request):
@@ -102,7 +101,6 @@ def models(article) :
     if token is None:
         return None
     payload = jwt.decode(token, SECRET_KEY, ALGORITHM)
-
     return payload['email']"""
 
 # 회원 가입
@@ -189,6 +187,7 @@ def EnterArticle(request) :
             quiz4_user_answer_correct = 0,
             article_comprehension = 0,
             quiz_score = 0,
+            issubmitted = False,
             email = request.data['email'],
             article_id = id,
         )
@@ -199,19 +198,34 @@ def EnterArticle(request) :
         return JsonResponse(data, safe=False)
     return JsonResponse(status=401, safe=False)
 
-# 학습하기 1단계 (학습하는 지문의 제목과 원문을 보냄)
 @api_view(['GET'])
-def step1(request):
+def title(request):
     title = ''
-    content = ''
     if request.method == 'GET':
         if ArticleQuiz.objects.filter(article_id=request.query_params['a_id']).exists():
             article = ArticleQuiz.objects.get(article_id=request.query_params['a_id'])
             title = article.article_title
-            content  = article.article_content
         data ={
-            'title': title,
-            'content': content
+            'title': title
+        }
+        return JsonResponse(data)
+    else :
+            return JsonResponse(status=401, safe=False)
+
+# 학습하기 1단계 (학습하는 지문의 제목과 원문을 보냄)
+@api_view(['GET'])
+def step1(request):
+    content = ''
+    if request.method == 'GET':
+        if ArticleQuiz.objects.filter(article_id=request.query_params['a_id']).exists():
+            if Study.objects.filter(study_id = request.query_params['s_id']).exists():
+                article = ArticleQuiz.objects.get(article_id=request.query_params['a_id'])
+                study = Study.objects.get(study_id = request.query_params['s_id'])
+                content  = article.article_content
+                issubmitted = study.issubmitted
+        data ={
+            'content': content,
+            'issubmitted' : issubmitted
         }
         return JsonResponse(data)
     else :
@@ -222,13 +236,15 @@ def step1(request):
 def step2(request):
     if request.method == 'GET':
         if ArticleQuiz.objects.filter(article_id=request.query_params['a_id']).exists():
-            article = ArticleQuiz.objects.get(article_id=request.query_params['a_id'])
-            title = article.article_title
-            summary = article.article_summary
-            jsonObject = json.loads(summary)
+            if Study.objects.filter(study_id = request.query_params['s_id']).exists():
+                article = ArticleQuiz.objects.get(article_id=request.query_params['a_id'])
+                study = Study.objects.get(study_id = request.query_params['s_id'])
+                summary = article.article_summary
+                issubmitted = study.issubmitted
+                jsonObject = json.loads(summary)
         data ={
-            'title' : title,
             'summary': jsonObject['content'],
+            'issubmitted' : issubmitted
         }
         return JsonResponse(data)
 
@@ -251,7 +267,6 @@ def step4(request):
         if Study.objects.filter(study_id = request.query_params['s_id']).exists():
             study = Study.objects.get(study_id = request.query_params['s_id'])
             article = ArticleQuiz.objects.get(article_id=request.query_params['a_id'])
-            title = article.article_title
             text = article.article_content
             answer = article.article_summary
             summary = json.loads(article.article_summary)
@@ -259,9 +274,9 @@ def step4(request):
             user_summary = study.user_summary
             article_comprehension = compute(text, user_summary, answer)
             study.article_comprehension = article_comprehension
+            study.issubmitted = True
             study.save()
             data ={
-            'title' : title,
             'article_comprehension' : article_comprehension,
             'summary': answer
         }
@@ -269,10 +284,6 @@ def step4(request):
 
     else :
         return JsonResponse(status=401, safe=False)
-
-    
-    
-        
 """@api_view(['POST','GET'])
 def step3(request):""" # 어휘 문제와 관련된 DB와의 작업이 여기에 들어갈 것 같아요 
 
@@ -342,8 +353,8 @@ def searchWord(request):
 def getAnswer(request):
     if request.method == 'POST':
         content=''
-        if ArticleQuiz.objects.filter(article_id=id_now[0]).exists():
-            article = ArticleQuiz.objects.get(article_id=id_now[0])
+        if ArticleQuiz.objects.filter(article_id=request.query_params['a_id']).exists():
+            article = ArticleQuiz.objects.get(article_id=request.query_params['a_id'])
             content  = article.article_content
         openApiURL = "http://aiopen.etri.re.kr:8000/MRCServlet"
         accessKey = "ed2296ff-a698-42e2-b72a-49fca2265500"
@@ -416,11 +427,13 @@ def GetMoreHistory(request):
                     date = s.study_date.strftime("%Y-%m-%d %H:%M:%S")
                     step2_score = s.article_comprehension
                     step3_score = s.quiz_score
+                    s_id = s.study_id
                     id = s.article_id
                     if ArticleQuiz.objects.filter(article_id = id).exists():
                         article = ArticleQuiz.objects.get(article_id = id)
                         title = article.article_title
-                    titlelist.append([title,date,step2_score,step3_score])
+                        a_id = article.article_id
+                    titlelist.append([title,date,step2_score,step3_score,a_id,s_id])
             
         data ={
             'title': titlelist,

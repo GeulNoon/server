@@ -49,6 +49,7 @@ class StudySerializer(serializers.ModelSerializer):
             'quiz4_user_answer_correct',
             'article_comprehension',
             'quiz_score',
+            'issubmitted',
             'email',
             'article_id',
         )
