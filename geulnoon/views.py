@@ -345,6 +345,7 @@ def step4(request):
                 answer = summary['answer_3']#5.01추가
             keywordlist = summary['keyword'] #4.30추가
             
+            quiz_score = 0
             q2_c = []
             q3_c = []
             q2 = study.quiz2_user_answer[1:-1].split(', ')
@@ -354,6 +355,7 @@ def step4(request):
 
             if(article.quiz1_answer == study.quiz1_user_answer):
                 study.quiz1_user_answer_correct = 1
+                quiz_score += 25
             else : 
                 study.quiz1_user_answer_correct = 0
 
@@ -371,11 +373,18 @@ def step4(request):
                     q3_c.append(0)
             study.quiz3_user_answer_correct = q3_c 
 
+            if(0 not in q2_c):
+                    quiz_score += 25
+            if(0 not in q3_c):
+                    quiz_score += 25
+
             if(article.quiz4_answer == study.quiz4_user_answer):
                 study.quiz4_user_answer_correct = 1
+                quiz_score += 25
             else:
                 study.quiz4_user_answer_correct = 0 
-
+            
+            study.quiz_score = quiz_score
             article_comprehension = compute(user_summary, answer, keywordlist)
             study.article_comprehension = article_comprehension
             keyword_user_answer = json.loads(study.keyword_user_answer)#4.30추가
