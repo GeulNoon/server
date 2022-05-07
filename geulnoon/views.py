@@ -93,6 +93,18 @@ def models(article, keywordlist) : #4.30추가 summary json파일에 keyword 리
     randomlist = random.sample(randomlist,len(answerlist))
     answerlist += randomlist
     random.shuffle(answerlist)
+
+    s1 = []
+    s2 = []
+    s3 = []
+
+    for k in [x for x in keywordlist if len(x) > 1]: 
+        if k in output_3.split('. ')[0]:
+            s1.append(k)
+        if k in output_3.split('. ')[1]:
+            s2.append(k)
+        if k in output_3.split('. ')[2]:
+            s3.append(k)
     
     file_data = OrderedDict()
     #content: 블록배열을 위한 단어배열(본문 속 무작위 단어 + 요약문 단어)
@@ -101,6 +113,9 @@ def models(article, keywordlist) : #4.30추가 summary json파일에 keyword 리
     file_data["answer"] = output
     file_data["answer_3"] = output_3 #5.01추가
     file_data["keyword"] = keywordlist #4.30추가 summary json파일에 keyword 리스트도 저장
+    file_data["s1"] = s1
+    file_data["s2"] = s2
+    file_data["s3"] = s3
     
     #json파일(DB에 저장할 json파일 생성)
     jsonfile = json.dumps(file_data, ensure_ascii=False)
@@ -165,48 +180,13 @@ def EnterArticle(request) :
             s_id = randint(1, 2147483647) # 학습 아이디 생성
             s_id_is_unique = Study.objects.filter(study_id=s_id).exists()
 
-         #4.30추가 지문 키워드 추출
         keywordlist = getKeywords(request.data['content'])
         keywordQuiz = request.data['content']
         for i,word in enumerate(keywordlist):
             keywordQuiz = keywordQuiz.replace(word,'('+str(i+1)+')'+"_"*len(word))
+
         summary = models(request.data['content'], keywordlist) # 지문 요약문 생성
 
-        # 어휘 문제 생성 함수는 여기에 들어 갈 것 같아요
-        text = request.data['content']
-        temp = text.split(". ")
-        wordlist = wordList(temp)
-        q1 = json.loads(test01.t01(wordlist[0]))
-        q2 = json.loads(test02.t02(wordlist[1], temp))
-        q3 = json.loads(test02.t02(wordlist[2], temp))
-        q4 = json.loads(test03.t03(wordlist[3]))
-        a = list(q1["CHOICE"].keys())
-        b = list(q2["CHOICE"].values())
-        c = list(q3["CHOICE"].values())
-        d = list(q4["CHOICE"].keys())
-        random.shuffle(a)
-        random.shuffle(b)
-        random.shuffle(c)
-        random.shuffle(d)
-        choice = OrderedDict()
-        choice["1"] = a
-        choice["2"] = b
-        choice["3"] = c
-        choice["4"] = d
-        answer2 = []
-        answer3 = []
-
-        for i in b:
-            for k, v in q2["CHOICE"].items():
-                if v == i: 
-                    answer2.append(k)
-        for j in c:
-            for k, v in q3["CHOICE"].items():
-                if v == j: 
-                    answer3.append(k)
-
-        print(answer2)
-        print(answer3)
         ArticleQuiz.objects.create(
             article_id = id,
             article_count = 1,
@@ -214,14 +194,14 @@ def EnterArticle(request) :
             article_title = request.data['title'],
             article_summary = summary,
             article_keyword = keywordQuiz,  #4.30추가
-            quiz1_content =  q1,
-            quiz2_content = q2,
-            quiz3_content = q3,
-            quiz4_content = q4,
-            quiz1_answer = wordlist[0],
-            quiz2_answer = answer2,
-            quiz3_answer = answer3, 
-            quiz4_answer = wordlist[3],
+            quiz1_content =  0,
+            quiz2_content = 0,
+            quiz3_content = 0,
+            quiz4_content = 0,
+            quiz1_answer = 0,
+            quiz2_answer = 0,
+            quiz3_answer = 0, 
+            quiz4_answer = 0,
             email_id = request.data['email'],
         )
 
@@ -231,7 +211,7 @@ def EnterArticle(request) :
             study_date = timezone.now(),
             study_type = 0,
             user_summary = '',
-            choice = choice,
+            choice = 0,
             quiz_count = 1,
             quiz1_user_answer = '',
             quiz2_user_answer = '',
@@ -243,7 +223,7 @@ def EnterArticle(request) :
             quiz4_user_answer_correct = 0,
             article_comprehension = 0,
             quiz_score = 0,
-            keyword_user_answer = data1,  #4.30추가
+            keyword_user_answer = 0,  #4.30추가
             keyword_score = 0,  #4.30추가
             issubmitted = False,
             email = request.data['email'],
@@ -256,7 +236,7 @@ def EnterArticle(request) :
         return JsonResponse(data, safe=False)
     return JsonResponse(status=401, safe=False)
 
-@api_view(['GET'])
+@api_view(['POST', 'GET'])
 def title(request):
     title = ''
     if request.method == 'GET':
@@ -271,7 +251,7 @@ def title(request):
             return JsonResponse(status=401, safe=False)
 
 # 학습하기 1단계 (학습하는 지문의 제목과 원문을 보냄)
-@api_view(['GET'])
+@api_view(['PUT', 'GET'])
 def step1(request):
     content = ''
     if request.method == 'GET':
@@ -280,20 +260,65 @@ def step1(request):
                 article = ArticleQuiz.objects.get(article_id=request.query_params['a_id'])
                 study = Study.objects.get(study_id = request.query_params['s_id'])
                 content  = article.article_content
-                quiz_1 = article.quiz1_content#5.01추가(문제 확인 용)
-                print(quiz_1)#5.01추가(문제 확인 용)
-                quiz_2 = article.quiz2_content#5.01추가(문제 확인 용)
-                print(quiz_2)#5.01추가(문제 확인 용)
-                quiz_3 = article.quiz3_content#5.01추가(문제 확인 용)
-                print(quiz_3)#5.01추가(문제 확인 용)
-                quiz_4 = article.quiz4_content#5.01추가(문제 확인 용)
-                print(quiz_4)#5.01추가(문제 확인 용)
                 issubmitted = study.issubmitted#5.01추가(문제 확인 용)
         data ={
             'content': content,
             'issubmitted' : issubmitted
         }
         return JsonResponse(data)
+        
+    if request.method == 'PUT':
+        if ArticleQuiz.objects.filter(article_id=request.data['a_id']).exists():
+            if Study.objects.filter(study_id = request.data['s_id']).exists():
+                article = ArticleQuiz.objects.get(article_id=request.data['a_id']) 
+                study = Study.objects.get(study_id = request.data['s_id'])
+                text = article.article_content
+                temp = text.split(". ")
+                wordlist = wordList(temp)
+                q1= json.loads(test01.t01(wordlist[0]))
+                q2 = json.loads(test02.t02(wordlist[1], temp))
+                q3 = json.loads(test02.t02(wordlist[2], temp))
+                q4 = json.loads(test03.t03(wordlist[3]))
+                article.quiz1_content = q1
+                article.quiz2_content = q2
+                article.quiz3_content = q3
+                article.quiz4_content = q4
+                article.quiz1_answer = wordlist[0]
+                article.quiz4_answer = wordlist[3]
+                a = list(q1["CHOICE"].keys())
+                b = list(q2["CHOICE"].values())
+                c = list(q3["CHOICE"].values())
+                d = list(q4["CHOICE"].keys())
+                random.shuffle(a)
+                random.shuffle(b)
+                random.shuffle(c)
+                random.shuffle(d)
+                choice = OrderedDict()
+                choice["1"] = a
+                choice["2"] = b
+                choice["3"] = c
+                choice["4"] = d
+                answer2 = []
+                answer3 = []
+
+                for i in b:
+                    for k, v in q2["CHOICE"].items():
+                        if v == i: 
+                            answer2.append(k)
+                for j in c:
+                    for k, v in q3["CHOICE"].items():
+                        if v == j: 
+                            answer3.append(k)
+
+                article.quiz2_answer = answer2
+                article.quiz3_answer = answer3
+                study.choice = choice
+                article.save()
+                study.save()
+                data ={
+                    's2': "ok",
+                }
+                return JsonResponse(data)
     else :
             return JsonResponse(status=401, safe=False)
 
@@ -310,6 +335,9 @@ def step2(request):
                 jsonObject = json.loads(summary)
         data ={
             'summary': jsonObject['content'],
+            's1': jsonObject['s1'],
+            's2': jsonObject['s2'],
+            's3': jsonObject['s3'],
             'issubmitted' : issubmitted
         }
         return JsonResponse(data)
@@ -506,7 +534,7 @@ def step5(request):
     
 
 # 마이페이지 
-@api_view(['POST','GET'])
+@api_view(['DELETE', 'GET', 'PUT'])
 def Mypage(request):
     if request.method == 'GET':
         if User.objects.filter(email = request.query_params['email']).exists():
@@ -516,6 +544,33 @@ def Mypage(request):
         data ={
             'nickname': nickname,
             'birthyear': birthyear
+        }
+        return JsonResponse(data)
+
+    if request.method == 'DELETE':
+        if User.objects.filter(email = request.data['email']).exists():
+            user = User.objects.get(email = request.data['email'])
+            user.delete()
+            
+        data = {
+                'delete': 'ok'
+        }
+        return JsonResponse(data)
+    if request.method == 'PUT':
+        if User.objects.filter(email = request.data['email']).exists():
+            user = User.objects.get(email = request.data['email'])
+            if(request.data['password']):
+                hased_pw = bcrypt.hashpw(request.data['password'].encode('utf-8'), bcrypt.gensalt())
+                decoded_hashed_pw = hased_pw.decode('utf-8')
+                user.password = decoded_hashed_pw
+            if('nickname' in request.data):   
+                if(request.data['nickname']):
+                    user.nickname = request.data['nickname']
+            if('birthyear' in request.data):    
+                user.birthyear= request.data['birthyear']
+            user.save()
+        data = {
+                'edit': 'ok'
         }
         return JsonResponse(data)
     else :
@@ -657,6 +712,14 @@ def GetStatistics(request):
                 elif  request.query_params['option'] == '2':
                     study_count = study.annotate(day=TruncMonth('study_date')).values('day').annotate(cnt=Count('study_id')).values('day', 'cnt').order_by('-day')[:5]
                     study_avg = study.annotate(day=TruncMonth('study_date')).values('day').annotate(avg1=Avg('article_comprehension'), avg2=Avg('quiz_score'), avg3=Avg('keyword_score')).values('day', 'avg1','avg2','avg3').order_by('-day')[:5]
+        
+        for x, y in zip(study_count, study_avg):
+            x['day'] = x['day'].strftime("%Y-%m-%d %H:%M:%S")
+            y['day'] = y['day'].strftime("%Y-%m-%d %H:%M:%S")
+            
+        '''for x in study_count:
+            x['day'] = x['day'].strftime("%Y-%m-%d %H:%M:%S") '''
+
         data ={
             'study_count':list(study_count),
             'study_avg':list(study_avg)
@@ -707,7 +770,7 @@ def ReviewStudy(request):
             Study.objects.create(
             study_id = s_id,
             study_date = timezone.now(),
-            study_type = 0,
+            study_type = 1, # 재학습
             user_summary = '',
             quiz_count = 1,
             quiz1_user_answer = '',
@@ -732,3 +795,4 @@ def ReviewStudy(request):
         return JsonResponse(data)
     else :
             return JsonResponse(status=401, safe=False)
+
