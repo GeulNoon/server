@@ -879,15 +879,26 @@ def GetMoreReview(request):
             if ArticleQuiz.objects.filter(email = user.email).exists():
                 article = ArticleQuiz.objects.filter(email = user.email)
                 study = Study.objects.filter(email = user.email)
-                a = study.order_by('-study_date').values_list('article_id',flat=True)
+                #a = study.order_by('-study_date').values_list('article_id',flat=True)
+                a = article.values_list('article_id',flat=True)
+                print(a)
                 for i in a:
                     title = article.get(article_id=i).article_title
-                    count = study.filter(article_id=i).count()
-                    #date = study.filter(a_id=i).latest('study_date')
-                    date = study.filter(article_id=i).aggregate(Max('study_date')).get('study_date__max').strftime("%Y-%m-%d %H:%M:%S")
-                    article_comprehension = study.filter(article_id=i).aggregate(Max('article_comprehension')).get('article_comprehension__max')
-                    quiz_score = study.filter(article_id=i).aggregate(Max('quiz_score')).get('quiz_score__max')
-                    keyword_score = study.filter(article_id=i).aggregate(Max('keyword_score')).get('keyword_score__max')
+                    print(Study.objects.filter(article_id=i))
+                    if (Study.objects.filter(article_id=i).exists()):
+                        count = study.filter(article_id=i).count()
+                        #date = study.filter(a_id=i).latest('study_date')
+                        date = study.filter(article_id=i).aggregate(Max('study_date')).get('study_date__max').strftime("%Y-%m-%d %H:%M:%S")
+                        article_comprehension = study.filter(article_id=i).aggregate(Max('article_comprehension')).get('article_comprehension__max')
+                        quiz_score = study.filter(article_id=i).aggregate(Max('quiz_score')).get('quiz_score__max')
+                        keyword_score = study.filter(article_id=i).aggregate(Max('keyword_score')).get('keyword_score__max')
+                    else:
+                        date = '0000-00-00 00:00:00'
+                        count = 0
+                        article_comprehension = 0
+                        quiz_score = 0
+                        keyword_score = 0
+                    print(titlelist)
                     titlelist.append([title, date, count, article_comprehension, quiz_score, keyword_score, i])
         data ={
             'title': titlelist,
@@ -903,12 +914,23 @@ def ReviewStudy(request):
     if request.method == 'PUT':
         if ArticleQuiz.objects.filter(article_id=request.data['a_id']).exists():
             s_id_is_unique = True
+            choice = OrderedDict()
             while s_id_is_unique:
                 s_id = randint(1, 2147483647) # 학습 아이디 생성
-                s_id_is_unique = Study.objects.filter(study_id=s_id).exists() #5.08 추가
-            if Study.objects.filter(study_id = request.data['s_id']).exists(): #5.04 수정
-                study = Study.objects.get(study_id = request.data['s_id'])#5.04 수정
-                choice = study.choice#5.04 수정
+                s_id_is_unique = Study.objects.filter(study_id=s_id).exists() #5.08 추가 
+            article = ArticleQuiz.objects.get(article_id=request.data['a_id']) 
+            a = list(article.quiz1_content["CHOICE"].keys())
+            b = list(article.quiz2_content["CHOICE"].values())
+            c = list(article.quiz3_content["CHOICE"].values())
+            d = list(article.quiz4_content["CHOICE"].keys())
+            random.shuffle(a)
+            random.shuffle(b)
+            random.shuffle(c)
+            random.shuffle(d)
+            choice["1"] = a
+            choice["2"] = b
+            choice["3"] = c
+            choice["4"] = d
             Study.objects.create(
             study_id = s_id,
             study_date = timezone.now(),
