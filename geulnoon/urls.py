@@ -21,4 +21,5 @@ urlpatterns = [
     path('getStatistics/', views.GetStatistics),
     path('getMoreHistory/', views.GetMoreHistory),
     path('reviewStudy/', views.ReviewStudy),#5.03 추가
+    path('getMoreReview/', views.GetMoreReview),
 ]
