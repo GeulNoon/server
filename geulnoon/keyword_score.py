@@ -2,7 +2,7 @@
 from logging import exception
 import gensim #pip install gensim==3.8.1
 
-ko_model = gensim.models.Word2Vec.load('./ko/ko.bin') #ko.bin 모델 필요
+ko_model = gensim.models.Word2Vec.load('./ko/ko_new.bin') #ko.bin 모델 필요
 def computeKeywordScore (user_answer, answer): 
     user_answer_list = user_answer['answer']
     score = 0

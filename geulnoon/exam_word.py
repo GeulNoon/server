@@ -12,7 +12,7 @@ from gensim.models import Word2Vec
 
 def wordList(temp):
     #불용어제거 리스트
-    ko_model = Word2Vec.load('./ko/ko.bin')
+    ko_model = Word2Vec.load('./ko/ko_new.bin')
     module_dir = os.path.dirname(__file__) 
 
     with open(os.path.join(module_dir, 'stop_word.txt'), encoding = 'cp949') as f:
@@ -129,14 +129,27 @@ def wordList(temp):
 
     #출제 어휘 선정
     word02 = []
+    similar_list = []
     for i in test_sameword:
         t = TEST(i)
         result_example = t[1]
         ex_example = EXAMPLE(result_example)
         if ex_example:
             word02.append(i)
-
-    word = random.sample(word02, 2)
+        similar = t[2]
+        if similar:
+            similar_list.append(i)
+    print(word02)
+    print(similar_list)
+    if not word02:
+        word.append("전면")
+    else:
+        word = random.sample(word02,1)
+    
+    if not similar_list:
+        word.append("반박")
+    else:
+        word.append(random.choice(similar_list))
 
     word0103 = []
 
@@ -144,7 +157,12 @@ def wordList(temp):
         w = ko_model.wv.most_similar(i)
         if w :
             word0103.append(i)
-
+    if len(word0103) == 0:
+        word0103.append("신규")
+        word0103.append("유입")
+    elif len(word0103) == 1:
+        word0103.append("신규")
+    
     word_0103 = random.sample(word0103, 2)
 
     word.insert(0,word_0103[0])
