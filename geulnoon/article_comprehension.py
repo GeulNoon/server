@@ -32,8 +32,12 @@ def compute (sentence_length, user_summary, answer, keywordlist): #4.30수정 te
             if (inc  == True):
                 keyword += 1
 
-        kw_in_sentence = keyword/len(words)
-        summary_score = sim * (0.6) + kw_in_sentence * (0.4)
+        try:
+            kw_in_sentence = keyword/len(words)
+            summary_score = sim * (0.6) + kw_in_sentence * (0.4)
+        except:
+            summary_score = sim
+            
         print(summary_score)
         return round(summary_score * 100)
     else:
