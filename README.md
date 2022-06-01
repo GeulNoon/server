@@ -3,7 +3,7 @@
 <p align="center"><img width="250" alt="logo" src="https://user-images.githubusercontent.com/68368589/170729953-c726f81e-06d4-4a29-befa-250460b7e5be.png"></p>
 
 ## :book: 소개
-![main](https://user-images.githubusercontent.com/68368589/170729871-0cbe4874-fe08-4abf-aaac-038949800201.png)
+![글눈소개](https://user-images.githubusercontent.com/68368589/171432287-4ac49dd4-7b27-4acc-8eea-bafec5b61b5c.png)
 
 ## :file_folder: 레파지토리 소개
 * Frontend <img src="https://img.shields.io/badge/React-61DAFB? style=flat&logo=React&logoColor=white"/><p>
