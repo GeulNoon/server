@@ -687,12 +687,10 @@ def Mypage(request):
 @api_view(['POST','GET'])
 def searchWord(request):
     if request.method == 'POST':
-        url = "https://krdict.korean.go.kr/api/search?"
-        serviceKey = "certkey_no=3341&key=A715599AC7951FC091E0810CAA1EC810"
-        typeOfSearch="&type_search=search"
-        part = "&part=word"
+        url = "https://stdict.korean.go.kr/api/search.do?"
+        serviceKey = "certkey_no=3340&key=6503615333D1CB1BCF98C10848003F39"
+        typeOfSearch="&type_search=search&req_type=xml"
         word = request.data["word"]
-        sort = "&sort=popular"
 
         def parse():
             try:
@@ -712,7 +710,7 @@ def searchWord(request):
                     "뜻":None,
                 }
         #parsing 하기
-        result = requests.get(url+serviceKey+typeOfSearch+part+"&q="+word+sort, verify=False)
+        result = requests.get(url+serviceKey+typeOfSearch+"&q="+word, verify=False)
         soup = BeautifulSoup(result.text,'lxml-xml')
         items = soup.find_all("item")
         row = []
