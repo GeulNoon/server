@@ -140,6 +140,8 @@ s_id_now = [] # 현재 학습하는 학습 id (임시)
 @api_view(['POST','GET'])
 def SignUp(request) :
     if request.method == 'POST':
+        if User.objects.filter(email = request.data['email']).exists():
+            return JsonResponse({'status': 401, 'message': '이미 사용 중인 이메일입니다.'}, json_dumps_params={'ensure_ascii': False}, status=401)
         hased_pw = bcrypt.hashpw(request.data['password'].encode('utf-8'), bcrypt.gensalt())
         decoded_hashed_pw = hased_pw.decode('utf-8')
         User.objects.create(
@@ -148,23 +150,23 @@ def SignUp(request) :
             password = decoded_hashed_pw,
             birthyear= request.data['birthyear'],
         )
-        return JsonResponse(request.data, safe=False)
+        return JsonResponse({'staus': 200, 'message': '회원가입 성공'}, json_dumps_params={'ensure_ascii': False}, status=200)
     return JsonResponse(status=401, safe=False)
 
 # 로그인
-@api_view(['POST','GET'])
+@api_view(['POST'])
 def LogIn(request) :
     if request.method == 'POST':
         if User.objects.filter(email = request.data['email']).exists():
             user = User.objects.get(email = request.data['email'])
             if bcrypt.checkpw(request.data['password'].encode('utf-8'), user.password.encode('utf-8')) :
-                token = jwt.encode({'email' : request.data['email']}, SECRET_KEY, ALGORITHM)   
-                return JsonResponse({"token" : token}, status=200)
+                return JsonResponse({'staus': 200, 'message': '로그인 성공'}, json_dumps_params={'ensure_ascii': False}, status=200)
             else:
-                return HttpResponse(status=401, safe=False)
+                return JsonResponse({'status': 401, 'message': '패스워드가 일치하지 않습니다.'}, json_dumps_params={'ensure_ascii': False}, status=401)
         else:
-            return JsonResponse(status=401, safe=False)
-    return HttpResponse(status=401, safe=False)
+            return JsonResponse({'status': 401, 'message': '존재하지 않는 이메일입니다.'}, json_dumps_params={'ensure_ascii': False}, status=401)
+    return JsonResponse({'status': 401, 'message': '로그인 실패'}, json_dumps_params={'ensure_ascii': False} , status=401)
+
 
 # 지문 입력
 @api_view(['POST','GET'])
@@ -391,7 +393,7 @@ def step4(request):
                 print('exception!')
                 sentnecne_len = 1
                 user_summary = ''
-            
+
             keywordlist = summary['keyword']
 
             #user_summary = study.user_summary#5.01추가
@@ -403,124 +405,199 @@ def step4(request):
                 answer = summary['answer_3']#5.01추가
                 keywordlist_sum = {'s1': summary['s1'],'s2': summary['s2'], 's3': summary['s3']}
 
-            
-            quiz_score = 0
-            q2_c = []
+            if request.query_params['Review'] == 'ok':
+                q2_c = []
+
+                answer_q2 = dict([(value, key) for key, value in article.quiz2_content["CHOICE"].items()])
+
+                try:
+                    u_answer_q2 = eval(study.quiz2_user_answer)
+                except:
+                    u_answer_q2 = dict()
+
+                for key,value in u_answer_q2.items():
+                    if answer_q2[key] == value:
+                        q2_c.append(1)
+                    else:
+                        q2_c.append(0)
+
+                is_q2_c = 0
+
+                if(0 not in q2_c and q2_c):
+                    is_q2_c = 1
+
+                is_word_c = []
+                is_word_c.append(study.quiz1_user_answer_correct)
+                is_word_c.append(is_q2_c)
+                is_word_c.append(int(study.quiz3_user_answer_correct))#5.11 수정
+                is_word_c.append(study.quiz4_user_answer_correct)
+
+                print(is_word_c)
+
+                quiz1 = dict()
+                quiz2 = dict()
+                quiz3 = dict()
+                quiz4 = dict()
+
+                quiz1["Test"] = article.quiz1_content["TEST1"]
+                quiz1["Choice"] = study.choice["1"]
+                quiz1["Answer"] = article.quiz1_content["ANSWER"]
+                quiz1["Mean"] = article.quiz1_content["CHOICE"]
+                quiz1["Answer_u"] = study.quiz1_user_answer
+                quiz2["Test"] = article.quiz2_content["TYPE2"]
+                quiz2["Word"] = article.quiz2_content["WORD"]
+                quiz2["Sentence"] = ''.join(article.quiz2_content["SENTENCE"])
+                quiz2["MEAN"] = article.quiz2_content["CHOICE"]
+                quiz2["Choice"] = study.choice["2"]
+                quiz2["Answer_u"] = list(u_answer_q2.values())#5.11 수정
+                quiz2["Is_Correct"] = q2_c
+                quiz3["Type"] = article.quiz3_content["TYPE4"]#5.11 수정
+                quiz3["Test"] = article.quiz3_content["MEAN"]
+                quiz3["Choice"] = study.choice["3"]
+                quiz3["Answer"] = article.quiz3_content["ANSWER"]
+                quiz3["Mean"] = article.quiz3_content["CHOICE"]
+                quiz3["Answer_u"] = study.quiz3_user_answer
+                quiz4["Test"] = article.quiz4_content["MEAN"]
+                quiz4["Choice"] = study.choice["4"]
+                quiz4["Answer"] = article.quiz4_content["ANSWER"]
+                quiz4["Mean"] = article.quiz4_content["CHOICE"]
+                quiz4["Answer_u"] = study.quiz4_user_answer
+
+                keyword_user_answer = {'answer': [{'id': 0, 'value': '0'}]}
+
+                try:
+                    keyword_user_answer = json.loads(study.keyword_user_answer)
+                    keyword_score = study.keyword_score
+                except:
+                    keyword_score = 0
+
+                article_comprehension = study.article_comprehension
+                avg_article_comprehension = (study.article_comprehension + study.keyword_score)/2
+                keywordlist = summary['keyword'][:5]
+                quiz_score = study.quiz_score
+
+            else:
+
+                quiz_score = 0
+                q2_c = []
 
 
-            if(article.quiz1_answer == study.quiz1_user_answer):
-                study.quiz1_user_answer_correct = 1
-                quiz_score += 25
-            else : 
-                study.quiz1_user_answer_correct = 0
+                if(article.quiz1_answer == study.quiz1_user_answer):
+                    study.quiz1_user_answer_correct = 1
+                    quiz_score += 25
+                else :
+                    study.quiz1_user_answer_correct = 0
 
-            answer_q2 = dict([(value, key) for key, value in article.quiz2_content["CHOICE"].items()])#5.11 수정
-            try:
-                u_answer_q2 = eval(study.quiz2_user_answer)
-            except:
-                u_answer_q2 = dict()
-            
-            for key,value in u_answer_q2.items():
-                if answer_q2[key] == value:
-                    print(value)
-                    q2_c.append(1)
-                else:
-                    q2_c.append(0)   
-            study.quiz2_user_answer_correct = q2_c
+                answer_q2 = dict([(value, key) for key, value in article.quiz2_content["CHOICE"].items()])#5.11 수정
+                try:
+                    u_answer_q2 = eval(study.quiz2_user_answer)
+                except:
+                    u_answer_q2 = dict()
 
-            is_q2_c = 0  #5.08 추가
-            
-            if(0 not in q2_c and q2_c):
+                for key,value in u_answer_q2.items():
+                    if answer_q2[key] == value:
+                        print(value)
+                        q2_c.append(1)
+                    else:
+                        q2_c.append(0)
+                study.quiz2_user_answer_correct = q2_c
+
+                is_q2_c = 0  #5.08 추가
+
+                if(0 not in q2_c and q2_c):
                     quiz_score += 25
                     is_q2_c = 1  #5.08 추가
-            
 
-            if(article.quiz3_answer == study.quiz3_user_answer):#5.11 수정
-                study.quiz3_user_answer_correct = 1
-                quiz_score += 25
-            else:
-                study.quiz3_user_answer_correct = 0 
 
-            if(article.quiz4_answer == study.quiz4_user_answer):
-                study.quiz4_user_answer_correct = 1
-                quiz_score += 25
-            else:
-                study.quiz4_user_answer_correct = 0 
-            
-            study.quiz_score = quiz_score
+                if(article.quiz3_answer == study.quiz3_user_answer):#5.11 수정
+                    study.quiz3_user_answer_correct = 1
+                    quiz_score += 25
+                else:
+                    study.quiz3_user_answer_correct = 0
 
-            ##5.08 추가
-            is_word_c = [] 
-            is_word_c.append(study.quiz1_user_answer_correct)
-            is_word_c.append(is_q2_c)
-            is_word_c.append(study.quiz3_user_answer_correct)#5.11 수정
-            is_word_c.append(study.quiz4_user_answer_correct)
-            print(is_word_c)
-            
-            quiz1 = dict()
-            quiz2 = dict()
-            quiz3 = dict()
-            quiz4 = dict()
-            quiz1["Test"] = article.quiz1_content["TEST1"]
-            quiz1["Choice"] = study.choice["1"]
-            quiz1["Answer"] = article.quiz1_content["ANSWER"]
-            quiz1["Mean"] = article.quiz1_content["CHOICE"]
-            quiz1["Answer_u"] = study.quiz1_user_answer
-            quiz2["Test"] = article.quiz2_content["TYPE2"]
-            quiz2["Word"] = article.quiz2_content["WORD"]
-            quiz2["Sentence"] = ''.join(article.quiz2_content["SENTENCE"])
-            quiz2["MEAN"] = article.quiz2_content["CHOICE"]
-            quiz2["Choice"] = study.choice["2"]
-            quiz2["Answer_u"] = list(u_answer_q2.values())#5.11 수정
-            quiz2["Is_Correct"] = q2_c
-            quiz3["Type"] = article.quiz3_content["TYPE4"]#5.11 수정
-            quiz3["Test"] = article.quiz3_content["MEAN"]
-            quiz3["Choice"] = study.choice["3"]
-            quiz3["Answer"] = article.quiz3_content["ANSWER"]
-            quiz3["Mean"] = article.quiz3_content["CHOICE"]
-            quiz3["Answer_u"] = study.quiz3_user_answer
-            quiz4["Test"] = article.quiz4_content["MEAN"]
-            quiz4["Choice"] = study.choice["4"]
-            quiz4["Answer"] = article.quiz4_content["ANSWER"]
-            quiz4["Mean"] = article.quiz4_content["CHOICE"]
-            quiz4["Answer_u"] = study.quiz4_user_answer
-            quiz_score = study.quiz_score # 5.09 추가
-            try:#5.11 추가
-                article_comprehension = compute(sentnecne_len, user_summary, answer, keywordlist_sum)
-            except:
-                article_comprehension = 0
-            study.article_comprehension = article_comprehension
-            keywordlist= keywordlist[:5]#5.08 추가
-            keyword_user_answer = {'answer': [{'id': 0, 'value': '0'}]}#5.05수정
-            try:
-                keyword_user_answer = json.loads(study.keyword_user_answer)#5.05수정
-                keyword_score = computeKeywordScore(keyword_user_answer, keywordlist)#5.05수정
-            except:
-                keyword_score = 0#5.05수정
-            study.keyword_score = keyword_score#4.30추가
-            avg_article_comprehension = (article_comprehension+keyword_score)/2 
-            study.issubmitted = True
-            study.save()
-        data ={
-            'name' : name,
-            'article_comprehension' : article_comprehension,
-            'summary': answer,
-            'user_summary': user_summary,#5.08 추가
-            'keyword_score': keyword_score,#4.30추가
-            'avg_article_comporehension' : avg_article_comprehension,
-            'keyword_answer': keywordlist,#4.30추가
-            'keyword_user_answer': keyword_user_answer,#4.30추가
-            'is_word_correct' : is_word_c,#5.08 추가
-            'quiz1' : quiz1,#5.08 추가
-            'quiz2' : quiz2,#5.08 추가
-            'quiz3' : quiz3,#5.08 추가
-            'quiz4' : quiz4,#5.08 추가
-            'quiz_score': quiz_score,#5.09 추가
-        }
+                if(article.quiz4_answer == study.quiz4_user_answer):
+                    study.quiz4_user_answer_correct = 1
+                    quiz_score += 25
+                else:
+                    study.quiz4_user_answer_correct = 0
+
+                study.quiz_score = quiz_score
+
+                ##5.08 추가
+                is_word_c = []
+                is_word_c.append(study.quiz1_user_answer_correct)
+                is_word_c.append(is_q2_c)
+                is_word_c.append(study.quiz3_user_answer_correct)#5.11 수정
+                is_word_c.append(study.quiz4_user_answer_correct)
+                print(is_word_c)
+
+                quiz1 = dict()
+                quiz2 = dict()
+                quiz3 = dict()
+                quiz4 = dict()
+                quiz1["Test"] = article.quiz1_content["TEST1"]
+                quiz1["Choice"] = study.choice["1"]
+                quiz1["Answer"] = article.quiz1_content["ANSWER"]
+                quiz1["Mean"] = article.quiz1_content["CHOICE"]
+                quiz1["Answer_u"] = study.quiz1_user_answer
+                quiz2["Test"] = article.quiz2_content["TYPE2"]
+                quiz2["Word"] = article.quiz2_content["WORD"]
+                quiz2["Sentence"] = ''.join(article.quiz2_content["SENTENCE"])
+                quiz2["MEAN"] = article.quiz2_content["CHOICE"]
+                quiz2["Choice"] = study.choice["2"]
+                quiz2["Answer_u"] = list(u_answer_q2.values())#5.11 수정
+                quiz2["Is_Correct"] = q2_c
+                quiz3["Type"] = article.quiz3_content["TYPE4"]#5.11 수정
+                quiz3["Test"] = article.quiz3_content["MEAN"]
+                quiz3["Choice"] = study.choice["3"]
+                quiz3["Answer"] = article.quiz3_content["ANSWER"]
+                quiz3["Mean"] = article.quiz3_content["CHOICE"]
+                quiz3["Answer_u"] = study.quiz3_user_answer
+                quiz4["Test"] = article.quiz4_content["MEAN"]
+                quiz4["Choice"] = study.choice["4"]
+                quiz4["Answer"] = article.quiz4_content["ANSWER"]
+                quiz4["Mean"] = article.quiz4_content["CHOICE"]
+                quiz4["Answer_u"] = study.quiz4_user_answer
+                quiz_score = study.quiz_score # 5.09 추가
+                try:#5.11 추가
+                    article_comprehension = compute(sentnecne_len, user_summary, answer, keywordlist_sum)
+                except:
+                    article_comprehension = 0
+                study.article_comprehension = article_comprehension
+                keywordlist= keywordlist[:5]#5.08 추가
+                keyword_user_answer = {'answer': [{'id': 0, 'value': '0'}]}#5.05수정
+                try:
+                    keyword_user_answer = json.loads(study.keyword_user_answer)#5.05수정
+                    keyword_score = computeKeywordScore(keyword_user_answer, keywordlist)#5.05수정
+                except:
+                    keyword_score = 0#5.05수정
+                study.keyword_score = keyword_score#4.30추가
+                avg_article_comprehension = (article_comprehension+keyword_score)/2
+                study.issubmitted = True
+                study.save()
+
+            data ={
+                'name' : name,
+                'article_comprehension' : article_comprehension,
+                'summary': answer,
+                'user_summary': user_summary,#5.08 추가
+                'keyword_score': keyword_score,#4.30추가
+                'avg_article_comporehension' : avg_article_comprehension,
+                'keyword_answer': keywordlist,#4.30추가
+                'keyword_user_answer': keyword_user_answer,#4.30추가
+                'is_word_correct' : is_word_c,#5.08 추가
+                'quiz1' : quiz1,#5.08 추가
+                'quiz2' : quiz2,#5.08 추가
+                'quiz3' : quiz3,#5.08 추가
+                'quiz4' : quiz4,#5.08 추가
+                'quiz_score': quiz_score,#5.09 추가
+            }
+
         return JsonResponse(data)
 
     else :
         return JsonResponse(status=401, safe=False)
+                                                                         
 
 @api_view(['PUT','GET'])
 def step3(request):# 어휘 문제와 관련된 DB와의 작업이 여기에 들어갈 것 같아요
