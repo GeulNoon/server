@@ -58,7 +58,7 @@ def t03(word):
     #json파일
     #문제 3번은 MEAN 문제, WORD 정답
     file_exam3 = OrderedDict()
-    file_exam3["TYPE3"] = "다음 단어 중 주어진 사전적 의미에 부합하는 단어를 고르시오."
+    file_exam3["TYPE3"] = "다음 단어들 중 주어진 사전적 의미에 부합하는 가장 적절한 단어를 고르시오."
     file_exam3["ANSWER"] = word    #단어
     file_exam3["MEAN"] = mean    #뜻
     #file_exam3["W2VWORD"] = w2v_word    #보기 단어
