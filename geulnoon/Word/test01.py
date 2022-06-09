@@ -62,7 +62,7 @@ def t01(word):
     #json파일
     #문제 1번은 TEST1이 문제, 정답은 WORD, 해설은 MEAN
     file_exam1 = OrderedDict()
-    file_exam1["TYPE1"] = "다음 단어 중 빈칸에 들어갈 수 있는 단어를 고르시오."
+    file_exam1["TYPE1"] = "다음 단어들 중 빈칸에 들어갈 수 있는 가장 적절한 단어를 고르시오."
     file_exam1["TEST1"] = test   #문제
     file_exam1["ANSWER"] = word    #단어
     #file_exam1["MEAN"] = mean    #뜻
