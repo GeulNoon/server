@@ -54,7 +54,7 @@ def t04(word):
     choice = { name:value for name, value in zip(w2v_word, w2v_mean) }
     
     file_exam4 = OrderedDict()
-    file_exam4["TYPE4"] = "다음 단어 "+word+"와(과) 의미가 비슷한 어휘(유의어)를 고르시오."
+    file_exam4["TYPE4"] = "다음 문장 속 "+word+"의 의미와 가장 관련이 깊은 단어를 고르시오."
     #file_exam4["WORD"] = word    #단어
     file_exam4["ANSWER"] = similar    #유의어
     file_exam4["MEAN"] = mean    #뜻
